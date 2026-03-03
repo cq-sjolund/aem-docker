@@ -37,7 +37,7 @@ elif [[ -f .env.example ]]; then
 fi
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
-JAVA_VERSION="${JAVA_VERSION:-17}"
+JAVA_VERSION="${JAVA_VERSION:-21}"
 AUTHOR_PORT="${AUTHOR_PORT:-4502}"
 PUBLISH_PORT="${PUBLISH_PORT:-4503}"
 DISPATCHER_PORT="${DISPATCHER_PORT:-80}"

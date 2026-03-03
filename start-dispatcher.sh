@@ -1,44 +1,66 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# start-dispatcher.sh  —  Runs inside the dispatcher container
+# start-dispatcher.sh  —  Run on the HOST (not inside Docker)
 #
-# The AEM SDK unix dispatcher tools self-extract into the dispatcher/ folder.
-# After extraction the layout is typically:
-#   dispatcher/
-#     docker_run.sh          ← launch script (sometimes in bin/)
-#     src/                   ← dispatcher config files
-#     lib/                   ← dispatcher shared libraries
+# The AEM SDK Dispatcher Tools ship a docker_run.sh script that manages
+# its own Docker container internally — it cannot be nested inside Compose.
+# Run this script directly from your terminal after docker compose up.
+#
+# Usage:
+#   ./start-dispatcher.sh
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-WORKDIR="/aem/dispatcher"
+RED='\033[0;31m'; YELLOW='\033[1;33m'; GREEN='\033[0;32m'
+BLUE='\033[0;34m'; BOLD='\033[1m'; NC='\033[0m'
 
-# Locate docker_run.sh — search common locations produced by the .sh extractor
-DOCKER_RUN=$(find "$WORKDIR" -maxdepth 3 -name "docker_run.sh" | head -1)
+info()  { echo -e "${BLUE}[INFO]${NC}  $*"; }
+error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
+warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 
-if [[ -z "$DOCKER_RUN" ]]; then
-  echo "[WARN] docker_run.sh not found in $WORKDIR"
-  echo "       Check that aem-setup.sh successfully ran the dispatcher .sh extractor."
-  echo "       Falling back to plain Apache httpd so the container stays visible."
-  exec httpd -D FOREGROUND
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# Load .env
+if [[ -f .env ]]; then
+  set -a; source .env; set +a
+elif [[ -f .env.example ]]; then
+  set -a; source .env.example; set +a
 fi
 
-# Locate src/ config directory — also search flexibly
-SRC_DIR=$(find "$WORKDIR" -maxdepth 3 -type d -name "src" | head -1)
+DISPATCHER_PORT="${DISPATCHER_PORT:-80}"
+PUBLISH_PORT="${PUBLISH_PORT:-4503}"
+
+# ── Locate docker_run.sh extracted by aem-setup.sh ───────────────────────────
+DOCKER_RUN=$(find dispatcher/ -maxdepth 3 -name "docker_run.sh" 2>/dev/null | head -1)
+
+[[ -z "$DOCKER_RUN" ]] && error "docker_run.sh not found in dispatcher/
+       Run ./aem-setup.sh first to extract the Dispatcher Tools."
+
+# ── Locate src/ config directory ─────────────────────────────────────────────
+SRC_DIR=$(find dispatcher/ -maxdepth 3 -type d -name "src" 2>/dev/null | head -1)
+
 if [[ -z "$SRC_DIR" ]]; then
-  echo "[WARN] No src/ config directory found — using empty placeholder"
-  SRC_DIR="$WORKDIR/src"
+  warn "No src/ config directory found — creating empty placeholder"
+  SRC_DIR="dispatcher/src"
   mkdir -p "$SRC_DIR"
 fi
 
-echo "[dispatcher] docker_run.sh : $DOCKER_RUN"
-echo "[dispatcher] Config src    : $SRC_DIR"
-echo "[dispatcher] Publish host  : ${PUBLISH_HOST:-aem-publish}"
-echo "[dispatcher] Publish port  : ${PUBLISH_PORT:-4503}"
+# ── Resolve publish host ──────────────────────────────────────────────────────
+# The dispatcher container needs to reach aem-publish.
+# On macOS/Linux, host.docker.internal resolves to the host from within Docker,
+# but aem-publish is already exposed on the host at localhost:4503.
+PUBLISH_HOST="host.docker.internal:${PUBLISH_PORT}"
+
+info "Starting AEM Dispatcher"
+info "  docker_run.sh : $DOCKER_RUN"
+info "  Config src    : $SRC_DIR"
+info "  Publish target: $PUBLISH_HOST"
+info "  Dispatcher port: $DISPATCHER_PORT"
+echo ""
 
 chmod +x "$DOCKER_RUN"
 
-# Resolve publish container IP via Docker internal DNS
-PUBLISH_IP=$(getent hosts "${PUBLISH_HOST:-aem-publish}" | awk '{print $1}' || echo "127.0.0.1")
-
-exec "$DOCKER_RUN" "$SRC_DIR" "${PUBLISH_IP}:${PUBLISH_PORT:-4503}" "${DISPATCHER_PORT:-80}"
+# docker_run.sh signature:
+#   docker_run.sh <src-dir> <publish-host:port> <dispatcher-port>
+exec "$DOCKER_RUN" "$SRC_DIR" "$PUBLISH_HOST" "$DISPATCHER_PORT"
