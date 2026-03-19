@@ -28,6 +28,7 @@ services:
     hostname: aem-author
     ports:
       - "${AUTHOR_PORT:-4502}:${AUTHOR_PORT:-4502}"
+      - "${AUTHOR_DEBUG_PORT:-20202}:${AUTHOR_DEBUG_PORT:-20202}"
     volumes:
       - ./author:/aem/author
       - ./start-author.sh:/start.sh:ro
@@ -37,6 +38,7 @@ services:
       AUTHOR_PORT:              ${AUTHOR_PORT:-4502}
       AUTHOR_JVM_OPTS:          ${AUTHOR_JVM_OPTS:--Xmx2048m -Xms512m}
       AUTHOR_EXTRA_RUNMODES:    ${AUTHOR_EXTRA_RUNMODES:-nosamplecontent}
+      JAVA_TOOL_OPTIONS:        -agentlib:jdwp=transport=dt_socket,address=*:${AUTHOR_DEBUG_PORT:-20202},server=y,suspend=n
     entrypoint: ["/bin/bash", "/start.sh"]
     healthcheck:
       test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/${AUTHOR_PORT:-4502}' 2>/dev/null && exit 0 || exit 1"]
@@ -54,6 +56,7 @@ services:
     hostname: aem-publish
     ports:
       - "${PUBLISH_PORT:-4503}:${PUBLISH_PORT:-4503}"
+      - "${PUBLISH_DEBUG_PORT:-30303}:${PUBLISH_DEBUG_PORT:-30303}"
     volumes:
       - ./publish:/aem/publish
       - ./start-publish.sh:/start.sh:ro
@@ -63,6 +66,7 @@ services:
       PUBLISH_PORT:             ${PUBLISH_PORT:-4503}
       PUBLISH_JVM_OPTS:         ${PUBLISH_JVM_OPTS:--Xmx2048m -Xms512m}
       PUBLISH_EXTRA_RUNMODES:   ${PUBLISH_EXTRA_RUNMODES:-nosamplecontent}
+      JAVA_TOOL_OPTIONS:        -agentlib:jdwp=transport=dt_socket,address=*:${PUBLISH_DEBUG_PORT:-30303},server=y,suspend=n
     entrypoint: ["/bin/bash", "/start.sh"]
     healthcheck:
       test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/${PUBLISH_PORT:-4503}' 2>/dev/null && exit 0 || exit 1"]
