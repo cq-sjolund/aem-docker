@@ -32,10 +32,17 @@ if ! grep -qs "quickstart.admin.password" "$PROPS_FILE" 2>/dev/null; then
   echo "quickstart.admin.password=${AEM_ADMIN_PASSWORD}" >> "$PROPS_FILE"
 fi
 
-exec java \
+java \
   ${AUTHOR_JVM_OPTS} \
   -jar "$JAR_NAME" \
   -r "author,${AUTHOR_EXTRA_RUNMODES}" \
   -p "${AUTHOR_PORT}" \
   -nofork \
-  -nointeractive
+  -nointeractive &
+
+AEM_PID=$!
+trap 'kill -TERM $AEM_PID' TERM INT
+
+/configure-replication.sh &
+
+wait $AEM_PID

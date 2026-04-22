@@ -32,10 +32,13 @@ services:
     volumes:
       - ./author:/aem/author
       - ./start-author.sh:/start.sh:ro
+      - ./configure-replication.sh:/configure-replication.sh:ro
     environment:
       AEM_ADMIN_USER:           ${AEM_ADMIN_USER:-admin}
       AEM_ADMIN_PASSWORD:       ${AEM_ADMIN_PASSWORD:-admin}
       AUTHOR_PORT:              ${AUTHOR_PORT:-4502}
+      PUBLISH_PORT:             ${PUBLISH_PORT:-4503}
+      PUBLISH_HOSTNAME:         aem-publish
       AUTHOR_JVM_OPTS:          ${AUTHOR_JVM_OPTS:--Xmx2048m -Xms512m}
       AUTHOR_EXTRA_RUNMODES:    ${AUTHOR_EXTRA_RUNMODES:-nosamplecontent}
       JAVA_TOOL_OPTIONS:        -agentlib:jdwp=transport=dt_socket,address=*:${AUTHOR_DEBUG_PORT:-20202},server=y,suspend=n
