@@ -39,5 +39,6 @@ curl -sf -u "${ADMIN_USER}:${ADMIN_PASS}" \
   -F "transportPassword=${ADMIN_PASS}" \
   -F "logLevel=error" \
   -F "retryDelay=60000" \
+  -F "userId@Delete=true" \
   && echo "[replication] Replication agent configured: ${PUBLISH_URL}" \
   || echo "[replication] WARNING: Failed to configure replication agent — configure it manually at ${AUTHOR_URL}/etc/replication/agents.author/publish"
